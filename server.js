@@ -27,8 +27,8 @@ var mustache   = require('mustache');
 var listing    = require('./lib/Listing.js');
 var simutil    = require('./lib/SimUtil.js');
 var translator = require('./lib/Translator.js');
-var ListingProvider = require('./lib/MongoDBListingProvider.js').ListingProvider;
-//var ListingProvider = require('./lib/MemoryListingProvider.js').ListingProvider;
+//var ListingProvider = require('./lib/MongoDBListingProvider.js').ListingProvider;
+var ListingProvider = require('./lib/MemoryListingProvider.js').ListingProvider;
 
 var app = express();
 
