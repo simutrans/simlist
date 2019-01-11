@@ -24,6 +24,7 @@ var prune_interval    = process.env.PRUNE_INTERVAL || 604800;
 var express    = require('express');
 var fs         = require("fs");
 var mustache   = require('mustache');
+var validator = require("validator");
 var listing    = require('./lib/Listing.js');
 var simutil    = require('./lib/SimUtil.js');
 var translator = require('./lib/Translator.js');
@@ -83,7 +84,7 @@ app.post('/announce', function(req, res) {
         return;
     }
 
-    listing.validate_dns(listing.parse_dns(req.body.dns), req.ip,
+    listing.validate_dns(listing.parse_dns(req.body.dns), listing.parse_dns(req.body.alt_dns), req.ip,
         function () {
             var new_listing = new listing.Listing(req.body.dns, req.body.port);
             console.log(JSON.stringify(req.body));
@@ -96,9 +97,10 @@ app.post('/announce', function(req, res) {
                 listingProvider.save(new_listing, function () {});
                 res.send(201, JSON.stringify(new_listing));
             });
-        }, function () {
-            res.send(400, "Bad Request - DNS field invalid");
-        }
+        },
+            function () {
+               res.send(400, "Bad Request - DNS field invalid");
+            }
     );
 });
 
@@ -180,12 +182,31 @@ app.get('/list', function(req, res) {
                         }
                         if (item.dns
                             && item.port
-                            && item.name 
-                            && item.rev
-                            && item.pak && item.pak !== "unknown") {
+//                            && item.name 
+//                            && item.rev
+//                            && item.pak && item.pak !== "unknown") {
+) {
+                            var itname = "simutrans server";
+                            if (item.name) {
+                                itname = item.name;
+                            }
+
+                            // we return an alternative IP6 only for IP6 capable systems
+                            var dns_name = item.dns;
+                            if (!req.ip.match(/::ffff:/) )  {
+                                // we have a real IP6 here, IPv4 start with "::ffff:" on a dualstack system
+                                // thus we return and IP
+                                if( validator.isIP(item.alt_dns,"6") ) {
+                                   dns_name = "["+item.alt_dns+"]";
+                                }
+                                else if( validator.isIP(item.dns,"6") ) {
+                                   dns_name = "["+item.dns+"]";
+                                }
+                            }
+
                             response = response
-                                + simutil.csv_escape(item.name)
-                                + "," + simutil.csv_escape(item.dns
+                                + simutil.csv_escape(itname)
+                                + "," + simutil.csv_escape(dns_name
                                 + ":" + item.port)
                                 + "," + simutil.csv_escape(item.rev.toString())
                                 + "," + simutil.csv_escape(item.pak)
