@@ -84,19 +84,42 @@ app.post('/announce', function(req, res) {
         return;
     }
 
+    if (!req.body.sid) {    // not set unique server id then server name or dns
+        req.body.sid = req.body.name+ ":" + req.body.port; //req.body.dns + ":" + req.body.port;
+    } 
+
     listing.validate_dns(listing.parse_dns(req.body.dns), listing.parse_dns(req.body.alt_dns), req.ip,
         function () {
-            var new_listing = new listing.Listing(req.body.dns, req.body.port);
+            var new_listing = new listing.Listing(req.body.dns, req.body.port, req.body.sid);
+            
             console.log(JSON.stringify(req.body));
+            console.log("");
+            
             if (new_listing.name === "") { new_listing.name = new_listing.id; }
 
-            listingProvider.findById(new_listing.id, function (existing_listing) {
+            if (new_listing.sid === "" || new_listing.sid === "undefined") { new_listing.sid = req.body.sid; }
+            
+            // simutrans version remove \" 
+            while (req.body.ver.indexOf("\"") !== -1) {
+                req.body.ver = req.body.ver.replace("\"", "");
+            }
+            // simutrans version repleace ' . ' to '.'
+            while (req.body.ver.indexOf(" . ") !== -1) {
+                req.body.ver = req.body.ver.replace(" . ", ".");
+            }
+
+            console.log(new_listing.sid);
+            console.log("");
+
+            listingProvider.findBySid(new_listing.sid, function (existing_listing) {
                 new_listing.update_from_object(existing_listing);
                 new_listing.update_from_body(req.body);
 
                 listingProvider.save(new_listing, function () {});
                 res.send(201, JSON.stringify(new_listing));
             });
+            
+
         },
             function () {
                res.send(400, "Bad Request - DNS field invalid");
@@ -107,6 +130,26 @@ app.post('/announce', function(req, res) {
 app.get('/list', function(req, res) {
     var urlbase, key;
 
+    var browser_langs = req.headers["accept-language"]; // browser accepts languages
+    global.lang = "en"; // default language
+    var langs = [ "en", "de", "ja" ]; // exists translate language
+    
+    if (browser_langs) {  // check browser or simutrans client
+        var b_lang = browser_langs.split(","); // browser languages
+    } else {
+        var b_lang = [ "en" ]; // simutrans client
+    }
+    
+    
+    langs.forEach( function  (value) { // check browser language in exists languages
+        if (value === b_lang[0]) {
+            global.lang = value;
+            return;
+        }
+        //console.log(value);
+    });
+    //global.lang = "ja"; // for test translate
+    
     // Process defaults
     if (!req.query.format) { req.query.format = "html"; }
 
@@ -115,7 +158,7 @@ app.get('/list', function(req, res) {
 
         // Write header
         res.write(mustache.to_html(templates["header.html"],
-            {title: req.host + " - Server listing", translate: translate, headerimage: header_image}));
+            {title: req.host, translate: translate, headerimage: header_image}));
 
         urlbase = "./list";
         if (req.query.detail) {
@@ -130,8 +173,8 @@ app.get('/list', function(req, res) {
                     var item = listings[key];
                     var timings = simutil.get_times(item.date, item.aiv);
                     if (timings.overdue_by > prune_interval * 1000) {
-                        listingProvider.removeById(item.id, function(removed) {
-                            console.log("Pruned stale server with id: " + removed.id);
+                        listingProvider.removeById(item.sid, function(removed) {
+                            console.log("Pruned stale server with id: " + removed.sid);
                         });
                     } else {
                         if (timings.overdue_by > item.aiv * 1000) {
@@ -173,8 +216,8 @@ app.get('/list', function(req, res) {
                     var item = listings[key];
                     var timings = simutil.get_times(item.date, item.aiv);
                     if (timings.overdue_by > prune_interval * 1000) {
-                        listingProvider.removeById(item.id, function(removed) {
-                            console.log("Pruned stale server with id: " + removed.id);
+                        listingProvider.removeById(item.sid, function(removed) {
+                            console.log("Pruned stale server with id: " + removed.sid);
                         });
                     } else {
                         if (timings.overdue_by > item.aiv * 1000) {
