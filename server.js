@@ -22,9 +22,11 @@ var prune_interval    = process.env.PRUNE_INTERVAL || 86400;
 
 // Includes
 var express    = require('express');
+var favicon    = require('serve-favicon');
+var bodyParser = require('body-parser');
 var fs         = require("fs");
 var mustache   = require('mustache');
-var validator = require("validator");
+var validator  = require("validator");
 var listing    = require('./lib/Listing.js');
 var simutil    = require('./lib/SimUtil.js');
 var translator = require('./lib/Translator.js');
@@ -33,7 +35,7 @@ var ListingProvider = require('./lib/MemoryListingProvider.js').ListingProvider;
 
 var app = express();
 
-app.use(express.bodyParser());
+app.use(bodyParser.json());
 app.set('trust proxy', true);
 
 var translate = (new translator.Translator()).translate;
@@ -64,23 +66,23 @@ app.get('/', function(req, res) { res.redirect(301, '/list'); });
 
 app.get('/announce', function(req, res) {
     res.writeHead(405, {"Content-Type": "text/html", "Allow": "POST"});
-    res.write(mustache.to_html(templates["announce.html"], {}));
+    res.write(mustache.render(templates["announce.html"], {}));
     res.end();
 });
 
 app.post('/announce', function(req, res) {
-    //if (req.ip === '178.77.102.239') { res.send(403, ""); return; }
+    //if (req.ip === '178.77.102.239') { res.status(403)send(""); return; }
 
     if (!req.body.port) {
-        res.send(400, "Bad Request - port field missing");
+        res.status(400).send("Bad Request - port field missing");
         return;
     }
     if (!listing.validate_port(listing.parse_port(req.body.port))) {
-        res.send(400, "Bad Request - port field invalid");
+        res.status(400).send("Bad Request - port field invalid");
         return;
     }
     if (!req.body.dns) {
-        res.send(400, "Bad Request - DNS field missing");
+        res.status(400).send("Bad Request - DNS field missing");
         return;
     }
 
@@ -95,11 +97,11 @@ app.post('/announce', function(req, res) {
                 new_listing.update_from_body(req.body);
 
                 listingProvider.save(new_listing, function () {});
-                res.send(201, JSON.stringify(new_listing));
+                res.status(201).send(JSON.stringify(new_listing));
             });
         },
             function () {
-               res.send(400, "Bad Request - DNS field invalid");
+               res.status(400).send("Bad Request - DNS field invalid");
             }
     );
 });
@@ -114,8 +116,8 @@ app.get('/list', function(req, res) {
         res.writeHead(200, {"Content-Type": "text/html"});
 
         // Write header
-        res.write(mustache.to_html(templates["header.html"],
-            {title: req.host + " - Server listing", translate: translate, headerimage: header_image}));
+        res.write(mustache.render(templates["header.html"],
+            {title: req.hostname + " - Server listing", translate: translate, headerimage: header_image}));
 
         urlbase = "./list";
         if (req.query.detail) {
@@ -157,11 +159,11 @@ app.get('/list', function(req, res) {
                 paksets_mapped.push({name: key, items: pakset_groups[key]});
             }
 
-            res.write(mustache.to_html(templates["list.html"],
+            res.write(mustache.render(templates["list.html"],
                 {translate: translate, timeformat: simutil.format_time,
                  paksets: paksets_mapped}));
 
-            res.write(mustache.to_html(templates["footer.html"], {}));
+            res.write(mustache.render(templates["footer.html"], {}));
             res.end();
         });
     } else if (req.query.format === "csv") {
@@ -215,10 +217,10 @@ app.get('/list', function(req, res) {
                     }
                 }
             }
-            res.send(200, response);
+            res.status(200).send(response);
         });
     } else {
-        res.send(501, "501 Not Implemented - The specified output format is not supported, supported formats are: " + available_formats.toString());
+        res.status(501),send("501 Not Implemented - The specified output format is not supported, supported formats are: " + available_formats.toString());
     }
 });
 
