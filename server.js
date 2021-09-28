@@ -24,6 +24,7 @@ var prune_interval    = process.env.PRUNE_INTERVAL || 86400;
 var express    = require('express');
 var favicon    = require('serve-favicon');
 var bodyParser = require('body-parser');
+var methodOverride = require('method-override');
 var fs         = require("fs");
 var mustache   = require('mustache');
 var validator  = require("validator");
@@ -35,7 +36,6 @@ var ListingProvider = require('./lib/MemoryListingProvider.js').ListingProvider;
 
 var app = express();
 
-app.use(bodyParser.json());
 app.set('trust proxy', true);
 
 var translate = (new translator.Translator()).translate;
@@ -59,6 +59,11 @@ var listingProvider = new ListingProvider(function () {
     app.listen(port);
     console.log('Listening on port ' + port);
 });
+
+app.use(bodyParser.json());
+// parse application/x-www-form-urlencoded
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(methodOverride());
 
 app.use('/static', express.static(__dirname + '/public'));
 
