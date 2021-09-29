@@ -13,24 +13,24 @@
 {{#items}}
 {{#data}}
         <div class="st_{{st}}">
-            <a name="{{sid}}"></a>
+            <a name="{{id}}"></a>
             <a href="map_graphic_big.png"><img src="static/demomap.png" width="64" height="64" /></a>
             <div> <!-- Floated to right of image -->
                 <h3>{{#name}}{{name}}{{/name}}{{^name}}{{#translate}}default_name{{/translate}}{{/name}}&nbsp;({{#translate}}status_{{st}}{{/translate}})</h3>
-                <div style="display:none">{{#sid}}{{sid}}{{/sid}}</div>
+                <div style="display:none">{{#sid}}{{id}}{{/sid}}</div>
                 <p>{{#translate}}list_time_1{{/translate}}{{#size}}{{#x}}{{x}}x{{y}}{{/x}}{{^x}}{{#translate}}size_unknown{{/translate}}{{/x}}{{/size}}{{#translate}}list_time_2{{/translate}}{{#time}}{{#mn}}{{#translate}}month_{{mn}}{{/translate}}&nbsp;{{yr}}{{/mn}}{{^mn}}{{#translate}}time_unknown{{/translate}}{{/mn}}{{/time}}&nbsp;{{#translate}}list_time_3{{/translate}}{{#start}}{{#mn}}{{#translate}}month_{{mn}}{{/translate}}&nbsp;{{yr}}{{/mn}}{{^mn}}{{#translate}}start_unknown{{/translate}}{{/mn}}{{/start}}{{#translate}}list_time_4{{/translate}}</p>
                 <p>{{#translate}}list_players_1{{/translate}}{{active}}{{#translate}}list_players_2{{/translate}}{{locked}}{{#translate}}list_players_3{{/translate}}{{clients}}{{#translate}}list_players_4{{/translate}}</p>
 {{/data}}
 {{^detail}}
 {{#data}}
-                <p><a href="./list?detail={{sid}}#{{sid}}">{{#translate}}show_server_detail{{/translate}}</a></p>
+                <p><a href="./list?detail={{id}}#{{id}}">{{#translate}}show_server_detail{{/translate}}</a></p>
             </div>
         </div>
 {{/data}}
 {{/detail}}
 {{#detail}}
 {{#data}}
-                <p><a href="./list#{{sid}}">{{#translate}}hide_server_detail{{/translate}}</a></p>
+                <p><a href="./list#{{id}}">{{#translate}}hide_server_detail{{/translate}}</a></p>
                 <p>{{#translate}}list_map_1{{/translate}}{{towns}}{{#translate}}list_map_2{{/translate}}{{citizens}}{{#translate}}list_map_3{{/translate}}{{factories}}{{#translate}}list_map_4{{/translate}}{{convoys}}{{#translate}}list_map_5{{/translate}}{{stops}}{{#translate}}list_map_6{{/translate}}</p>
                 <p>{{#translate}}list_pakset{{/translate}}{{pak}}</p>
                 <p>{{#translate}}list_ver{{/translate}}{{ver}}</p>

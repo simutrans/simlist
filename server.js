@@ -94,8 +94,23 @@ app.post('/announce', function(req, res) {
     listing.validate_dns(listing.parse_dns(req.body.dns), listing.parse_dns(req.body.alt_dns), req.ip,
         function () {
             var new_listing = new listing.Listing(req.body.dns, req.body.port);
-            console.log(JSON.stringify(req.body));
+//            console.log(JSON.stringify(req.body));
+
             if (new_listing.name === "") { new_listing.name = new_listing.id; }
+
+             // simutrans version remove \" 
+            while (req.body.ver.indexOf("\"") !== -1) {
+                req.body.ver = req.body.ver.replace("\"", "");
+            }
+            // simutrans version repleace ' . ' to '.'
+            while (req.body.ver.indexOf(" . ") !== -1) {
+                req.body.ver = req.body.ver.replace(" . ", ".");
+            }
+
+            if (global.console_log === 1 || global.console_log === 3) {
+                console.log("announce id: " + new_listing.id);
+                console.log("");
+            }
 
             listingProvider.findById(new_listing.id, function (existing_listing) {
                 new_listing.update_from_object(existing_listing);
@@ -104,7 +119,7 @@ app.post('/announce', function(req, res) {
                 listingProvider.save(new_listing, function () {});
                 res.status(201).send(JSON.stringify(new_listing));
             });
-        },
+       },
             function () {
                res.status(400).send("Bad Request - DNS field invalid");
             }
@@ -128,8 +143,7 @@ app.get('/list', function(req, res) {
         if (req.query.detail) {
             urlbase = urlbase + "?detail=" + req.query.detail;
         }
-
-        listingProvider.findAll(function (listings) {
+		listingProvider.findAll(function (listings) {
             var pakset_names = [];
             var pakset_groups = {};
             for (key in listings) {
@@ -137,7 +151,7 @@ app.get('/list', function(req, res) {
                     var item = listings[key];
                     var timings = simutil.get_times(item.date, item.aiv);
                     if (timings.overdue_by > prune_interval * 1000) {
-                        listingProvider.removeById(item.id, function(removed) {
+						listingProvider.removeById(item.id, function(removed) {
                             console.log("Pruned stale server with id: " + removed.id);
                         });
                     } else {
@@ -163,7 +177,6 @@ app.get('/list', function(req, res) {
             for (key in pakset_groups) {
                 paksets_mapped.push({name: key, items: pakset_groups[key]});
             }
-
             res.write(mustache.render(templates["list.html"],
                 {translate: translate, timeformat: simutil.format_time,
                  paksets: paksets_mapped}));
@@ -180,10 +193,9 @@ app.get('/list', function(req, res) {
                     var item = listings[key];
                     var timings = simutil.get_times(item.date, item.aiv);
                     if (timings.overdue_by > prune_interval * 1000) {
-                        listingProvider.removeById(item.id, function(removed) {
+						listingProvider.removeById(item.id, function(removed) {
                             console.log("Pruned stale server with id: " + removed.id);
-                        });
-                    } else {
+                        });                    } else {
                         if (timings.overdue_by > item.aiv * 1000) {
                             item.st = 0;
                         }

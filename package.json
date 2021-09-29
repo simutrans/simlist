@@ -17,6 +17,6 @@
     "start": "node server.js"
   },
   "engines": {
-    "node": "v12.*"
+    "node": "v14.*"
   }
 }
