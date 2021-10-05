@@ -229,7 +229,18 @@ app.get('/list', function(req, res) {
                                 + ":" + item.port)
                                 + "," + simutil.csv_escape(item.rev.toString())
                                 + "," + simutil.csv_escape(item.pak)
-                                + "," + simutil.csv_escape(item.st.toString()) + "\n";
+                                + "," + simutil.csv_escape(item.st.toString());
+
+                            // append alt_dns if there and escape IP6 with []
+                            if( validator.isIP(item.alt_dns,"6") ) {
+                                if( validator.isIP(item.dns,"4") ) {
+                                   response = response + "," + item.dns;
+                                }
+                            }
+                            else if( validator.isIP(item.alt_dns,"4") ) {
+                                   response = response + "," + item.alt_dns;
+                            }
+                            response = response + "\n";
                         }
                     }
                 }
