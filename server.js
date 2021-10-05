@@ -212,11 +212,13 @@ app.get('/list', function(req, res) {
 
                             // we return an alternative IP6 only for IP6 capable systems
                             var dns_name = item.dns;
+                            var alt_dnsname = item.alt_dns;
                             if (!req.ip.match(/::ffff:/) )  {
                                 // we have a real IP6 here, IPv4 start with "::ffff:" on a dualstack system
                                 // thus we return and IP
                                 if( validator.isIP(item.alt_dns,"6") ) {
                                    dns_name = "["+item.alt_dns+"]";
+                                   alt_dnsname = item.dns;
                                 }
                                 else if( validator.isIP(item.dns,"6") ) {
                                    dns_name = "["+item.dns+"]";
@@ -231,14 +233,12 @@ app.get('/list', function(req, res) {
                                 + "," + simutil.csv_escape(item.pak)
                                 + "," + simutil.csv_escape(item.st.toString());
 
-                            // append alt_dns if there and escape IP6 with []
-                            if( validator.isIP(item.alt_dns,"6") ) {
-                                if( validator.isIP(item.dns,"4") ) {
-                                   response = response + "," + item.dns;
-                                }
+                            // append alt_dns if there
+                            if( validator.isIP(alt_dnsname,"6") ) {
+                                   response = response + ",[" + alt_dnsname + "]";
                             }
-                            else if( validator.isIP(item.alt_dns,"4") ) {
-                                   response = response + "," + item.alt_dns;
+                            else if( validator.isIP(alt_dnsname,"4") ) {
+                                   response = response + "," + alt_dnsname;
                             }
                             response = response + "\n";
                         }
