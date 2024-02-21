@@ -1,22 +1,18 @@
 {
   "name": "simlist",
   "description": "Simutrans online game listing server",
-  "version": "2.2.0",
+  "version": "2.1.0",
   "private": true,
   "dependencies": {
-    "body-parser": "^1.19.0",
-    "express": "^4.17.1",
-    "forever": "^4.0.1",
-    "method-override": "*",
-    "mustache": "^4.2.0",
-    "serve-favicon": "2.5.0",
-    "validator": "^13.6.0"
+    "express": "3.3.5",
+    "mustache": "0.7.2",
+    "validator": "3.12.0"
   },
   "subdomain": "simlist",
   "scripts": {
     "start": "node server.js"
   },
   "engines": {
-    "node": "v14.*"
+    "node": "0.10.x"
   }
 }

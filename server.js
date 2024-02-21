@@ -18,13 +18,14 @@
 // Configured by environment parameters
 var header_image      = process.env.HEADER_IMAGE || "simlogo.png";
 var port              = process.env.PORT || 80;
+var ssl_port          = process.env.SSL_PORT || 443;
 var prune_interval    = process.env.PRUNE_INTERVAL || 86400;
 
 // Includes
+const path     = require('node:path');
 var express    = require('express');
-var favicon    = require('serve-favicon');
-var bodyParser = require('body-parser');
-var methodOverride = require('method-override');
+var https      = require('https');
+var http       = require('http');
 var fs         = require("fs");
 var mustache   = require('mustache');
 var validator  = require("validator");
@@ -36,6 +37,14 @@ var ListingProvider = require('./lib/MemoryListingProvider.js').ListingProvider;
 
 var app = express();
 
+const certDir = `/etc/letsencrypt/live`;
+const domain = `servers.simutrans.org`;
+const options = {
+  key: fs.readFileSync(`${certDir}/${domain}/privkey.pem`),
+  cert: fs.readFileSync(`${certDir}/${domain}/fullchain.pem`)
+};
+
+app.use(express.bodyParser());
 app.set('trust proxy', true);
 
 var translate = (new translator.Translator()).translate;
@@ -56,72 +65,62 @@ for (n in templatefiles) {
 }
 
 var listingProvider = new ListingProvider(function () {
-    app.listen(port);
-    console.log('Listening on port ' + port);
+//    app.listen(port);
+//    console.log('Listening on port ' + port);
 });
 
-app.use(bodyParser.json());
-// parse application/x-www-form-urlencoded
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(methodOverride());
+http.createServer(app).listen(port);
+https.createServer(options, app).listen(ssl_port);
 
 app.use('/static', express.static(__dirname + '/public'));
 
 app.get('/', function(req, res) { res.redirect(301, '/list'); });
 
+// lestsencrypt challenge
+app.get('/.well-known/acme-challenge/+*',(req, res) => {
+  const file = './acme/.well-known/acme-challenge/'+path.posix.basename(req.path);
+  console.log('acme challenge '+file);
+  res.download(file); // Set disposition and send it.
+});
+
 app.get('/announce', function(req, res) {
     res.writeHead(405, {"Content-Type": "text/html", "Allow": "POST"});
-    res.write(mustache.render(templates["announce.html"], {}));
+    res.write(mustache.to_html(templates["announce.html"], {}));
     res.end();
 });
 
 app.post('/announce', function(req, res) {
-    //if (req.ip === '178.77.102.239') { res.status(403)send(""); return; }
+    //if (req.ip === '178.77.102.239') { res.send(403, ""); return; }
 
     if (!req.body.port) {
-        res.status(400).send("Bad Request - port field missing");
+        res.send(400, "Bad Request - port field missing");
         return;
     }
     if (!listing.validate_port(listing.parse_port(req.body.port))) {
-        res.status(400).send("Bad Request - port field invalid");
+        res.send(400, "Bad Request - port field invalid");
         return;
     }
     if (!req.body.dns) {
-        res.status(400).send("Bad Request - DNS field missing");
+        res.send(400, "Bad Request - DNS field missing");
         return;
     }
 
     listing.validate_dns(listing.parse_dns(req.body.dns), listing.parse_dns(req.body.alt_dns), req.ip,
         function () {
             var new_listing = new listing.Listing(req.body.dns, req.body.port);
-//            console.log(JSON.stringify(req.body));
-
+            console.log(JSON.stringify(req.body));
             if (new_listing.name === "") { new_listing.name = new_listing.id; }
-
-             // simutrans version remove \" 
-            while (req.body.ver.indexOf("\"") !== -1) {
-                req.body.ver = req.body.ver.replace("\"", "");
-            }
-            // simutrans version repleace ' . ' to '.'
-            while (req.body.ver.indexOf(" . ") !== -1) {
-                req.body.ver = req.body.ver.replace(" . ", ".");
-            }
-
-            if (global.console_log === 1 || global.console_log === 3) {
-                console.log("announce id: " + new_listing.id);
-                console.log("");
-            }
 
             listingProvider.findById(new_listing.id, function (existing_listing) {
                 new_listing.update_from_object(existing_listing);
                 new_listing.update_from_body(req.body);
 
                 listingProvider.save(new_listing, function () {});
-                res.status(201).send(JSON.stringify(new_listing));
+                res.send(201, JSON.stringify(new_listing));
             });
-       },
+        },
             function () {
-               res.status(400).send("Bad Request - DNS field invalid");
+               res.send(400, "Bad Request - DNS field invalid");
             }
     );
 });
@@ -136,14 +135,15 @@ app.get('/list', function(req, res) {
         res.writeHead(200, {"Content-Type": "text/html"});
 
         // Write header
-        res.write(mustache.render(templates["header.html"],
-            {title: req.hostname + " - Server listing", translate: translate, headerimage: header_image}));
+        res.write(mustache.to_html(templates["header.html"],
+            {title: req.host + " - Server listing", translate: translate, headerimage: header_image}));
 
         urlbase = "./list";
         if (req.query.detail) {
             urlbase = urlbase + "?detail=" + req.query.detail;
         }
-		listingProvider.findAll(function (listings) {
+
+        listingProvider.findAll(function (listings) {
             var pakset_names = [];
             var pakset_groups = {};
             for (key in listings) {
@@ -151,7 +151,7 @@ app.get('/list', function(req, res) {
                     var item = listings[key];
                     var timings = simutil.get_times(item.date, item.aiv);
                     if (timings.overdue_by > prune_interval * 1000) {
-						listingProvider.removeById(item.id, function(removed) {
+                        listingProvider.removeById(item.id, function(removed) {
                             console.log("Pruned stale server with id: " + removed.id);
                         });
                     } else {
@@ -177,11 +177,12 @@ app.get('/list', function(req, res) {
             for (key in pakset_groups) {
                 paksets_mapped.push({name: key, items: pakset_groups[key]});
             }
-            res.write(mustache.render(templates["list.html"],
+
+            res.write(mustache.to_html(templates["list.html"],
                 {translate: translate, timeformat: simutil.format_time,
                  paksets: paksets_mapped}));
 
-            res.write(mustache.render(templates["footer.html"], {}));
+            res.write(mustache.to_html(templates["footer.html"], {}));
             res.end();
         });
     } else if (req.query.format === "csv") {
@@ -193,9 +194,10 @@ app.get('/list', function(req, res) {
                     var item = listings[key];
                     var timings = simutil.get_times(item.date, item.aiv);
                     if (timings.overdue_by > prune_interval * 1000) {
-						listingProvider.removeById(item.id, function(removed) {
+                        listingProvider.removeById(item.id, function(removed) {
                             console.log("Pruned stale server with id: " + removed.id);
-                        });                    } else {
+                        });
+                    } else {
                         if (timings.overdue_by > item.aiv * 1000) {
                             item.st = 0;
                         }
@@ -245,10 +247,10 @@ app.get('/list', function(req, res) {
                     }
                 }
             }
-            res.status(200).send(response);
+            res.send(200, response);
         });
     } else {
-        res.status(501),send("501 Not Implemented - The specified output format is not supported, supported formats are: " + available_formats.toString());
+        res.send(501, "501 Not Implemented - The specified output format is not supported, supported formats are: " + available_formats.toString());
     }
 });
 

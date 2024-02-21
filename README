@@ -16,12 +16,12 @@ Installation
 
 Check out source, run "npm install" to install required packages. Set desired environment parameters and then run using "node server.js".
 
-Current version is optimised to run on Heroku.
-
-For mongodb, you need to add 
-"mongodb": "1.3.18"
-to the packages ...
-
 Instances
 
 The server can be run with multiple instances, if you need multiple listings servers. Note that this requires compiled-in support from the game itself and is only really useful to let you run listings servers for both the standard and experimental versions of the game.
+
+The https support assumes the certificates are properly saved as usual. You need to alter server.js for the domain and path and have root run regulary
+
+certbot certonly -n -m my@email -d dnsname.for.challenge --webroot --webroot-path /home/node-js-user/simlist-master/acme/
+
+node.js will then specially answer the callenge from that sirectory 
