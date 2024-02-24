@@ -24,11 +24,10 @@ var prune_interval    = process.env.PRUNE_INTERVAL || 86400;
 // Includes
 const path     = require('node:path');
 var express    = require('express');
-var https      = require('https');
-var http       = require('http');
 var fs         = require("fs");
 var mustache   = require('mustache');
 var validator  = require("validator");
+var bodyParser = require('body-parser');
 var listing    = require('./lib/Listing.js');
 var simutil    = require('./lib/SimUtil.js');
 var translator = require('./lib/Translator.js');
@@ -44,7 +43,7 @@ const options = {
   cert: fs.readFileSync(`${certDir}/${domain}/fullchain.pem`)
 };
 
-app.use(express.bodyParser());
+app.use(bodyParser());
 app.set('trust proxy', true);
 
 var translate = (new translator.Translator()).translate;
@@ -64,13 +63,17 @@ for (n in templatefiles) {
     }
 }
 
-var listingProvider = new ListingProvider(function () {
-//    app.listen(port);
-//    console.log('Listening on port ' + port);
+// SSL Configuration ends 
+let https = require('https').Server(options, app);
+https.listen(ssl_port, function () {
+   console.log('API server listening on port ' + ssl_port + ' (SSL Connection)');
 });
 
-http.createServer(app).listen(port);
-https.createServer(options, app).listen(ssl_port);
+// Normal HTTP configuration
+let http = require('http').Server(app);
+http.listen(port, function() {
+ console.log('API server listening on port ' + port);
+});
 
 app.use('/static', express.static(__dirname + '/public'));
 
@@ -85,13 +88,11 @@ app.get('/.well-known/acme-challenge/+*',(req, res) => {
 
 app.get('/announce', function(req, res) {
     res.writeHead(405, {"Content-Type": "text/html", "Allow": "POST"});
-    res.write(mustache.to_html(templates["announce.html"], {}));
+    res.write(mustache.render(templates["announce.html"], {}));
     res.end();
 });
 
 app.post('/announce', function(req, res) {
-    //if (req.ip === '178.77.102.239') { res.send(403, ""); return; }
-
     if (!req.body.port) {
         res.send(400, "Bad Request - port field missing");
         return;
@@ -135,7 +136,7 @@ app.get('/list', function(req, res) {
         res.writeHead(200, {"Content-Type": "text/html"});
 
         // Write header
-        res.write(mustache.to_html(templates["header.html"],
+        res.write(mustache.render(templates["header.html"],
             {title: req.host + " - Server listing", translate: translate, headerimage: header_image}));
 
         urlbase = "./list";
@@ -178,11 +179,11 @@ app.get('/list', function(req, res) {
                 paksets_mapped.push({name: key, items: pakset_groups[key]});
             }
 
-            res.write(mustache.to_html(templates["list.html"],
+            res.write(mustache.render(templates["list.html"],
                 {translate: translate, timeformat: simutil.format_time,
                  paksets: paksets_mapped}));
 
-            res.write(mustache.to_html(templates["footer.html"], {}));
+            res.write(mustache.render(templates["footer.html"], {}));
             res.end();
         });
     } else if (req.query.format === "csv") {

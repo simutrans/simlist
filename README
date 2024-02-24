@@ -22,6 +22,10 @@ The server can be run with multiple instances, if you need multiple listings ser
 
 The https support assumes the certificates are properly saved as usual. You need to alter server.js for the domain and path and have root run regulary
 
+On first run to download certificates, outcomment the certificate files near line 42+43, start the server and do the challenge (and make sure the acme directory exists)
+certbot certonly -manual -m my@email -d dnsname.for.challenge --webroot --webroot-path /home/node-js-user/simlist-master/acme/
+
+Now there should be valid certificates, chaeck permission and can remove the comments in line 42 and 43, restart nodejs and add a cronjob to renew the certificates
 certbot certonly -n -m my@email -d dnsname.for.challenge --webroot --webroot-path /home/node-js-user/simlist-master/acme/
 
-node.js will then specially answer the callenge from that sirectory 
+The listserver will run on http and https
