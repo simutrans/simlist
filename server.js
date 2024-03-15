@@ -37,7 +37,7 @@ var ListingProvider = require('./lib/MemoryListingProvider.js').ListingProvider;
 var app = express();
 
 const certDir = `/etc/letsencrypt/live`;
-const domain = `servers.simutrans.org`;
+const domain = `servers.simutrans-forum.de`;
 const options = {
   key: fs.readFileSync(`${certDir}/${domain}/privkey.pem`),
   cert: fs.readFileSync(`${certDir}/${domain}/fullchain.pem`)
@@ -63,16 +63,18 @@ for (n in templatefiles) {
     }
 }
 
-// SSL Configuration ends 
-let https = require('https').Server(options, app);
-https.listen(ssl_port, function () {
-   console.log('API server listening on port ' + ssl_port + ' (SSL Connection)');
-});
+var listingProvider = new ListingProvider(function () {
+  // SSL Configuration ends 
+  let https = require('https').Server(options, app);
+  https.listen(ssl_port, function () {
+     console.log('API server listening on port ' + ssl_port + ' (SSL Connection)');
+  });
 
-// Normal HTTP configuration
-let http = require('http').Server(app);
-http.listen(port, function() {
- console.log('API server listening on port ' + port);
+  // Normal HTTP configuration
+  let http = require('http').Server(app);
+  http.listen(port, function() {
+   console.log('API server listening on port ' + port);
+  });
 });
 
 app.use('/static', express.static(__dirname + '/public'));
@@ -93,23 +95,24 @@ app.get('/announce', function(req, res) {
 });
 
 app.post('/announce', function(req, res) {
+//    console.log("recieved announce from "+req.body.dns+" alt_dns "+req.body.alt_dns+" at IP "+req.ip);
     if (!req.body.port) {
-        res.send(400, "Bad Request - port field missing");
+        res.status(400).send("Bad Request - port field missing");
         return;
     }
     if (!listing.validate_port(listing.parse_port(req.body.port))) {
-        res.send(400, "Bad Request - port field invalid");
+        res.status(400).send("Bad Request - port field invalid");
         return;
     }
     if (!req.body.dns) {
-        res.send(400, "Bad Request - DNS field missing");
+        res.status(400).send("Bad Request - DNS field missing");
         return;
     }
 
     listing.validate_dns(listing.parse_dns(req.body.dns), listing.parse_dns(req.body.alt_dns), req.ip,
         function () {
             var new_listing = new listing.Listing(req.body.dns, req.body.port);
-            console.log(JSON.stringify(req.body));
+//            console.log(JSON.stringify(req.body));
             if (new_listing.name === "") { new_listing.name = new_listing.id; }
 
             listingProvider.findById(new_listing.id, function (existing_listing) {
@@ -117,11 +120,11 @@ app.post('/announce', function(req, res) {
                 new_listing.update_from_body(req.body);
 
                 listingProvider.save(new_listing, function () {});
-                res.send(201, JSON.stringify(new_listing));
+                res.status(201).send(JSON.stringify(new_listing));
             });
         },
             function () {
-               res.send(400, "Bad Request - DNS field invalid");
+               res.status(400).send("Bad Request - DNS field invalid");
             }
     );
 });
@@ -137,7 +140,7 @@ app.get('/list', function(req, res) {
 
         // Write header
         res.write(mustache.render(templates["header.html"],
-            {title: req.host + " - Server listing", translate: translate, headerimage: header_image}));
+            {title: req.hostname + " - Server listing", translate: translate, headerimage: header_image}));
 
         urlbase = "./list";
         if (req.query.detail) {
@@ -248,10 +251,10 @@ app.get('/list', function(req, res) {
                     }
                 }
             }
-            res.send(200, response);
+            res.status(200).send(response);
         });
     } else {
-        res.send(501, "501 Not Implemented - The specified output format is not supported, supported formats are: " + available_formats.toString());
+        res.status(501).send("501 Not Implemented - The specified output format is not supported, supported formats are: " + available_formats.toString());
     }
 });
 
